@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCU USR 表單系統</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    /* 首頁 */
+    .home-page {
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      min-height: 100vh; padding: 24px;
+    }
+    .home-page .title { font-size: 36px; font-weight: bold; color: #4a90d9; margin-bottom: 8px; }
+    .home-page .contact { font-size: 14px; color: #888; margin-bottom: 40px; }
+    .home-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .home-buttons button {
+      padding: 20px 48px; font-size: 18px; border: 2px solid #4a90d9; background: #fff; color: #4a90d9;
+      border-radius: 12px; cursor: pointer; font-weight: bold; transition: all 0.2s;
+    }
+    .home-buttons button:hover { background: #4a90d9; color: #fff; }
+
+    /* 頂部導航按鈕 */
+    .nav {
+      display: none; justify-content: center; gap: 12px; padding: 24px; background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10;
+    }
+    .nav.show { display: flex; }
+    .nav button {
+      padding: 10px 24px; font-size: 14px; border: 2px solid #4a90d9; background: #fff; color: #4a90d9;
+      border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;
+    }
+    .nav button:hover, .nav button.active { background: #4a90d9; color: #fff; }
+
+    /* 表單區域 */
+    .form-section { display: none; max-width: 600px; margin: 24px auto; background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .form-section.active { display: block; }
+    .form-section h2 { text-align: center; margin-bottom: 24px; color: #333; border-bottom: 2px solid #4a90d9; padding-bottom: 12px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: bold; color: #555; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 4px rgba(74,144,217,0.3); }
+
+    .file-group { margin-bottom: 12px; }
+    .file-group label { display: block; margin-bottom: 4px; font-weight: bold; color: #555; font-size: 14px; }
+
+    /* 公假節次 4 per row, compact */
+    .checkbox-grid { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 12px; justify-content: start; }
+    .checkbox-grid label { font-weight: normal; display: flex; align-items: center; gap: 2px; font-size: 14px; white-space: nowrap; cursor: pointer; }
+
+    .radio-group { display: flex; gap: 20px; }
+    .radio-group label { font-weight: normal; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+
+    .submit-btn {
+      display: block; width: 100%; padding: 14px; background: #4a90d9; color: #fff; border: none;
+      border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 24px; transition: background 0.2s;
+    }
+    .submit-btn:hover { background: #357abd; }
+    .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* 公假日期節次組 */
+    .date-period-group {
+      border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; position: relative; background: #fafafa;
+    }
+    .date-period-group .remove-btn {
+      position: absolute; top: 8px; right: 8px; background: #e74c3c; color: #fff; border: none;
+      border-radius: 50%; width: 24px; height: 24px; font-size: 14px; cursor: pointer; line-height: 24px; text-align: center;
+    }
+    .date-period-group .remove-btn:hover { background: #c0392b; }
+    .add-group-btn {
+      display: inline-block; padding: 8px 16px; background: #27ae60; color: #fff; border: none;
+      border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 8px;
+    }
+    .add-group-btn:hover { background: #219a52; }
+
+    .loading-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center;
+    }
+    .loading-overlay.show { display: flex; }
+    .loading-box { background: #fff; padding: 32px 48px; border-radius: 12px; text-align: center; }
+    .loading-box .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #4a90d9; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .success-msg { color: #27ae60; text-align: center; font-size: 18px; font-weight: bold; margin-top: 16px; display: none; }
+    .error-hint { color: #e74c3c; font-size: 12px; display: none; margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p>提交中，請稍候...</p>
+  </div>
+</div>
+
+<!-- ==================== 首頁 ==================== -->
+<div class="home-page" id="homePage">
+  <div class="title">OCU USR</div>
+  <div class="contact">有其他問題聯絡 LINE: jrliang0610</div>
+  <div class="home-buttons">
+    <button onclick="goToSection('worker')">工讀生</button>
+    <button onclick="goToSection('insurance')">保險資料</button>
+    <button onclick="goToSection('leave')">公假申請</button>
+  </div>
+</div>
+
+<!-- 導航按鈕（表單頁面才顯示） -->
+<div class="nav" id="navBar">
+  <button onclick="showSection('worker')" id="btn-worker">工讀生</button>
+  <button onclick="showSection('insurance')" id="btn-insurance">保險資料</button>
+  <button onclick="showSection('leave')" id="btn-leave">公假申請</button>
+</div>
+
+<!-- ==================== 工讀生表單 ==================== -->
+<div class="form-section" id="section-worker">
+  <h2>工讀生資料表單</h2>
+  <form id="workerForm" onsubmit="submitWorkerForm(event)">
+    <div class="form-group">
+      <label>學號 *</label>
+      <input type="text" name="studentId" required placeholder="請輸入8碼學號" pattern="\d{8}" title="學號必須為8碼數字" maxlength="8">
+    </div>
+    <div class="form-group">
+      <label>班級 *</label>
+      <input type="text" name="className" required placeholder="例：日創設111忠">
+    </div>
+    <div class="form-group">
+      <label>姓名 *</label>
+      <input type="text" name="name" required placeholder="請輸入姓名">
+    </div>
+    <div class="form-group">
+      <label>身分證字號 *</label>
+      <input type="text" name="idNumber" required placeholder="例：A123456789" pattern="[A-Z][12]\d{8}" title="請輸入正確的身分證字號格式" maxlength="10">
+    </div>
+    <div class="form-group">
+      <label>出生年月日（民國） *</label>
+      <input type="text" name="birthday" required placeholder="例：0880610" pattern="\d{7}" title="請輸入7碼民國生日，例如0880610" maxlength="7">
+    </div>
+    <div class="form-group">
+      <label>戶籍地址 *</label>
+      <input type="text" name="address" required placeholder="請輸入戶籍地址">
+    </div>
+    <div class="form-group">
+      <label>手機電話 *</label>
+      <input type="tel" name="phone" required placeholder="例：0912345678" pattern="09\d{8}" title="請輸入正確的手機號碼" maxlength="10">
+    </div>
+    <div class="form-group">
+      <label>在學校有沒有其他工讀工作 *</label>
+      <div class="radio-group">
+        <label><input type="radio" name="otherJob" value="有" required> 有</label>
+        <label><input type="radio" name="otherJob" value="沒有"> 沒有</label>
+      </div>
+    </div>
+
+    <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
+    <p style="font-size: 13px; color: #e67e22; margin-bottom: 12px;">資料如果有問題我會聯絡你</p>
+    <div class="form-group">
+      <label>LINE ID *</label>
+      <input type="text" name="lineId" required placeholder="請輸入 LINE ID">
+    </div>
+    <div class="form-group">
+      <label>LINE 姓名 *</label>
+      <input type="text" name="lineName" required placeholder="請輸入 LINE 顯示名稱">
+    </div>
+
+    <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
+    <h3 style="margin-bottom: 16px; color: #555;">上傳檔案</h3>
+
+    <div class="file-group">
+      <label>身分證 正面 *</label>
+      <input type="file" name="idFront" accept="image/*,.pdf" required>
+    </div>
+    <div class="file-group">
+      <label>身分證 反面 *</label>
+      <input type="file" name="idBack" accept="image/*,.pdf" required>
+    </div>
+    <div class="file-group">
+      <label>學生證 正面 *</label>
+      <input type="file" name="studentCardFront" accept="image/*,.pdf" required>
+    </div>
+    <div class="file-group">
+      <label>學生證 反面 *</label>
+      <input type="file" name="studentCardBack" accept="image/*,.pdf" required>
+    </div>
+    <div class="file-group">
+      <label>存摺封面 *</label>
+      <input type="file" name="bankbook" accept="image/*,.pdf" required>
+    </div>
+
+    <button type="submit" class="submit-btn">提交工讀生資料</button>
+    <div class="success-msg" id="worker-success">✓ 工讀生資料提交成功！</div>
+  </form>
+</div>
+
+<!-- ==================== 保險資料表單 ==================== -->
+<div class="form-section" id="section-insurance">
+  <h2>保險資料表單</h2>
+  <form id="insuranceForm" onsubmit="submitInsuranceForm(event)">
+    <div class="form-group">
+      <label>班級 *</label>
+      <input type="text" name="className" required placeholder="例：日創設111忠">
+    </div>
+    <div class="form-group">
+      <label>姓名 *</label>
+      <input type="text" name="name" required placeholder="請輸入姓名">
+    </div>
+    <div class="form-group">
+      <label>出生年月日（西元） *</label>
+      <input type="date" name="birthday" required>
+    </div>
+    <div class="form-group">
+      <label>身分證字號 *</label>
+      <input type="text" name="idNumber" required placeholder="例：A123456789" pattern="[A-Z][12]\d{8}" title="請輸入正確的身分證字號格式" maxlength="10">
+    </div>
+    <div class="form-group">
+      <label>手機電話 *</label>
+      <input type="tel" name="phone" required placeholder="例：0912345678" pattern="09\d{8}" title="請輸入正確的手機號碼" maxlength="10">
+    </div>
+
+    <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
+    <p style="font-size: 13px; color: #e67e22; margin-bottom: 12px;">資料如果有問題我會聯絡你</p>
+    <div class="form-group">
+      <label>LINE ID *</label>
+      <input type="text" name="lineId" required placeholder="請輸入 LINE ID">
+    </div>
+    <div class="form-group">
+      <label>LINE 姓名 *</label>
+      <input type="text" name="lineName" required placeholder="請輸入 LINE 顯示名稱">
+    </div>
+
+    <button type="submit" class="submit-btn">提交保險資料</button>
+    <div class="success-msg" id="insurance-success">✓ 保險資料提交成功！</div>
+  </form>
+</div>
+
+<!-- ==================== 公假申請表單 ==================== -->
+<div class="form-section" id="section-leave">
+  <h2>公假申請表單</h2>
+  <form id="leaveForm" onsubmit="submitLeaveForm(event)">
+    <div class="form-group">
+      <label>班級 *</label>
+      <input type="text" name="className" required placeholder="例：日創設111忠">
+    </div>
+    <div class="form-group">
+      <label>姓名 *</label>
+      <input type="text" name="name" required placeholder="請輸入姓名">
+    </div>
+    <div class="form-group">
+      <label>學號 *</label>
+      <input type="text" name="studentId" required placeholder="請輸入8碼學號" pattern="\d{8}" title="學號必須為8碼數字" maxlength="8">
+    </div>
+    <div class="form-group">
+      <label>事由 *</label>
+      <select name="reason" id="reasonSelect" required>
+        <option value="">請選擇事由</option>
+      </select>
+      <p style="font-size: 12px; color: #999; margin-top: 4px;">事由選項由後台管理</p>
+    </div>
+
+    <!-- 日期+節次 多組區域 -->
+    <div class="form-group">
+      <label>日期與節次 *</label>
+      <div id="datePeriodContainer">
+        <!-- 第一組（預設） -->
+        <div class="date-period-group" data-group="0">
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:13px;">日期</label>
+            <input type="date" name="leaveDate_0" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label style="font-size:13px;">節次（可複選）</label>
+            <div class="checkbox-grid">
+              <label><input type="checkbox" name="periods_0" value="1">1</label>
+              <label><input type="checkbox" name="periods_0" value="2">2</label>
+              <label><input type="checkbox" name="periods_0" value="3">3</label>
+              <label><input type="checkbox" name="periods_0" value="4">4</label>
+              <label><input type="checkbox" name="periods_0" value="5">5</label>
+              <label><input type="checkbox" name="periods_0" value="6">6</label>
+              <label><input type="checkbox" name="periods_0" value="7">7</label>
+              <label><input type="checkbox" name="periods_0" value="8">8</label>
+              <label><input type="checkbox" name="periods_0" value="9">9</label>
+              <label><input type="checkbox" name="periods_0" value="10">10</label>
+              <label><input type="checkbox" name="periods_0" value="11">11</label>
+              <label><input type="checkbox" name="periods_0" value="12">12</label>
+              <label><input type="checkbox" name="periods_0" value="13">13</label>
+              <label><input type="checkbox" name="periods_0" value="14">14</label>
+              <label><input type="checkbox" name="periods_0" value="15">15</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="add-group-btn" onclick="addDatePeriodGroup()">＋ 新增一組日期與節次</button>
+    </div>
+
+    <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
+    <p style="font-size: 13px; color: #e67e22; margin-bottom: 12px;">資料如果有問題我會聯絡你</p>
+    <div class="form-group">
+      <label>LINE ID *</label>
+      <input type="text" name="lineId" required placeholder="請輸入 LINE ID">
+    </div>
+    <div class="form-group">
+      <label>LINE 姓名 *</label>
+      <input type="text" name="lineName" required placeholder="請輸入 LINE 顯示名稱">
+    </div>
+
+    <button type="submit" class="submit-btn">提交公假申請</button>
+    <div class="success-msg" id="leave-success">✓ 公假申請提交成功！</div>
+  </form>
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwdwWEXa7cb4YDrzb8dt0QaXg6sMxaHET38IMhOTYri0NKu4wIQ2JXP3hVayS10UNomvw/exec';
+
+  // ==================== 首頁 / 導航 ====================
+  function goToSection(section) {
+    document.getElementById('homePage').style.display = 'none';
+    document.getElementById('navBar').classList.add('show');
+    showSection(section);
+  }
+
+  function showSection(section) {
+    document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
+    document.getElementById('section-' + section).classList.add('active');
+    document.getElementById('btn-' + section).classList.add('active');
+  }
+
+  // ==================== 工具函式 ====================
+  function showLoading(show) {
+    document.getElementById('loadingOverlay').classList.toggle('show', show);
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // 電話加上前綴 ' 避免 Excel 吃掉 0
+  function formatPhone(phone) {
+    return "'" + phone;
+  }
+
+  // ==================== 載入事由選項 ====================
+  async function loadReasons() {
+    try {
+      const res = await fetch(API_URL + '?action=getReasons');
+      const data = await res.json();
+      const select = document.getElementById('reasonSelect');
+      if (data.reasons) {
+        data.reasons.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = r;
+          select.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.error('無法載入事由選項:', e);
+    }
+  }
+
+  // ==================== 公假：新增/刪除日期節次組 ====================
+  let groupCounter = 1;
+
+  function addDatePeriodGroup() {
+    const idx = groupCounter++;
+    const container = document.getElementById('datePeriodContainer');
+    const div = document.createElement('div');
+    div.className = 'date-period-group';
+    div.setAttribute('data-group', idx);
+    div.innerHTML = `
+      <button type="button" class="remove-btn" onclick="removeGroup(this)" title="刪除此組">✕</button>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label style="font-size:13px;">日期</label>
+        <input type="date" name="leaveDate_${idx}" required>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:13px;">節次（可複選）</label>
+        <div class="checkbox-grid">
+          <label><input type="checkbox" name="periods_${idx}" value="1">1</label>
+          <label><input type="checkbox" name="periods_${idx}" value="2">2</label>
+          <label><input type="checkbox" name="periods_${idx}" value="3">3</label>
+          <label><input type="checkbox" name="periods_${idx}" value="4">4</label>
+          <label><input type="checkbox" name="periods_${idx}" value="5">5</label>
+          <label><input type="checkbox" name="periods_${idx}" value="6">6</label>
+          <label><input type="checkbox" name="periods_${idx}" value="7">7</label>
+          <label><input type="checkbox" name="periods_${idx}" value="8">8</label>
+          <label><input type="checkbox" name="periods_${idx}" value="9">9</label>
+          <label><input type="checkbox" name="periods_${idx}" value="10">10</label>
+          <label><input type="checkbox" name="periods_${idx}" value="11">11</label>
+          <label><input type="checkbox" name="periods_${idx}" value="12">12</label>
+          <label><input type="checkbox" name="periods_${idx}" value="13">13</label>
+          <label><input type="checkbox" name="periods_${idx}" value="14">14</label>
+          <label><input type="checkbox" name="periods_${idx}" value="15">15</label>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  }
+
+  function removeGroup(btn) {
+    btn.closest('.date-period-group').remove();
+  }
+
+  // ==================== 提交工讀生表單 ====================
+  async function submitWorkerForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const name = form.name.value;
+
+    showLoading(true);
+    try {
+      const payload = {
+        action: 'submitWorker',
+        studentId: form.studentId.value,
+        className: form.className.value,
+        name: name,
+        idNumber: form.idNumber.value,
+        birthday: form.birthday.value,
+        address: form.address.value,
+        phone: formatPhone(form.phone.value),
+        otherJob: form.otherJob.value,
+        lineId: form.lineId.value,
+        lineName: form.lineName.value,
+        files: []
+      };
+
+      const fileFields = [
+        { input: 'idFront', label: '身分證正面' },
+        { input: 'idBack', label: '身分證反面' },
+        { input: 'studentCardFront', label: '學生證正面' },
+        { input: 'studentCardBack', label: '學生證反面' },
+        { input: 'bankbook', label: '存摺封面' }
+      ];
+
+      for (const f of fileFields) {
+        const file = form[f.input].files[0];
+        const ext = file.name.split('.').pop();
+        const base64 = await fileToBase64(file);
+        payload.files.push({
+          fileName: name + '_' + f.label + '.' + ext,
+          mimeType: file.type,
+          data: base64
+        });
+      }
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        document.getElementById('worker-success').style.display = 'block';
+        form.reset();
+        setTimeout(() => document.getElementById('worker-success').style.display = 'none', 5000);
+      } else {
+        alert('提交失敗：' + (result.error || '未知錯誤'));
+      }
+    } catch (err) {
+      alert('提交失敗：' + err.message);
+    }
+    showLoading(false);
+  }
+
+  // ==================== 提交保險資料表單 ====================
+  async function submitInsuranceForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    showLoading(true);
+    try {
+      const payload = {
+        action: 'submitInsurance',
+        className: form.className.value,
+        name: form.name.value,
+        birthday: form.birthday.value,
+        idNumber: form.idNumber.value,
+        phone: formatPhone(form.phone.value),
+        lineId: form.lineId.value,
+        lineName: form.lineName.value
+      };
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        document.getElementById('insurance-success').style.display = 'block';
+        form.reset();
+        setTimeout(() => document.getElementById('insurance-success').style.display = 'none', 5000);
+      } else {
+        alert('提交失敗：' + (result.error || '未知錯誤'));
+      }
+    } catch (err) {
+      alert('提交失敗：' + err.message);
+    }
+    showLoading(false);
+  }
+
+  // ==================== 提交公假申請表單 ====================
+  async function submitLeaveForm(e) {
+    e.preventDefault();
+    const form = e.target;
+
+    // 收集所有日期+節次組
+    const groups = document.querySelectorAll('#datePeriodContainer .date-period-group');
+    const entries = [];
+    let valid = true;
+
+    groups.forEach(g => {
+      const idx = g.getAttribute('data-group');
+      const dateInput = form['leaveDate_' + idx];
+      const checked = g.querySelectorAll('input[type="checkbox"]:checked');
+      if (!dateInput.value) { valid = false; return; }
+      if (checked.length === 0) {
+        alert('每組日期至少要選擇一個節次');
+        valid = false;
+        return;
+      }
+      entries.push({
+        date: dateInput.value,
+        periods: Array.from(checked).map(c => c.value).join(',')
+      });
+    });
+
+    if (!valid || entries.length === 0) return;
+
+    showLoading(true);
+    try {
+      const payload = {
+        action: 'submitLeave',
+        className: form.className.value,
+        name: form.name.value,
+        studentId: form.studentId.value,
+        reason: form.reason.value,
+        lineId: form.lineId.value,
+        lineName: form.lineName.value,
+        entries: entries
+      };
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        document.getElementById('leave-success').style.display = 'block';
+        form.reset();
+        // 移除多餘的日期節次組，只留第一組
+        const container = document.getElementById('datePeriodContainer');
+        const allGroups = container.querySelectorAll('.date-period-group');
+        allGroups.forEach((g, i) => { if (i > 0) g.remove(); });
+        setTimeout(() => document.getElementById('leave-success').style.display = 'none', 5000);
+      } else {
+        alert('提交失敗：' + (result.error || '未知錯誤'));
+      }
+    } catch (err) {
+      alert('提交失敗：' + err.message);
+    }
+    showLoading(false);
+  }
+
+  // 頁面載入
+  loadReasons();
+</script>
+
+</body>
+</html>
